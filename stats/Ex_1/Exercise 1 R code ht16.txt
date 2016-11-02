@@ -1,0 +1,77 @@
+#Read in the data, making sure to specify the right pathway
+tits <- read.csv("pathway/tits.csv", header = TRUE, sep = ";", row.names = NULL)
+#For example, for me the pathway is
+tits <- read.csv("D:/Google Drive/Lund/Statistics course/Lectures and Exercises/Exercise 1/tits.csv", header = TRUE, sep = ",", row.names = NULL)
+tits
+View(tits)
+str(tits)
+
+#Specify species as a factor if necessary
+tits$SPE <- factor(tits$SPE)
+
+#Make column with full names, method 1
+tits$names <- ifelse(tits$SPE == "TX", "Great tit", "Blue tit")
+tits
+
+#Make column with full names, method 2
+tits$names[tits$SPE=='TX'] <- 'Great tit'
+tits$names[tits$SPE=='BM'] <- 'Blue tit'
+
+#Descriptive statistics, method 1
+sapply(tits, mean, na.rm=TRUE) 
+
+#Descriptive statistics, method 2
+summary(tits)
+
+#Descriptive statistics, method 3.  Start by loading library.
+library(psych)
+describeBy(tits$wei, tits$SPE)
+describeBy(tits$egg, tits$SPE)
+
+#T-test
+t.test(tits$wei~tits$SPE)
+
+#Plot egg number versus weight
+plot(tits$wei, tits$egg)
+plot(tits$wei, tits$egg, xlab = "Weight", ylab = "Egg number")
+plot(tits$wei, tits$egg, xlab = "Weight", ylab = "Egg number", col=as.numeric(tits$SPE))
+
+#Make subsets of the data
+TX <- subset(tits, tits$SPE == "TX")
+BM <- subset(tits, tits$SPE == "BM")
+
+#Plot both subsets
+plot(TX$wei, TX$egg)
+points(BM$we, BM$egg)
+
+#Specify axes range and plot both subsets
+plot(TX$wei, TX$egg, xlab = "Weight", ylab = "Egg number", xlim = c(8, 20), ylim = c(4, 13), col="black")
+points(BM$we, BM$egg, col = "blue")
+
+#Calculate regression line for full dataset and add to plot
+reg.all <- lm(tits$egg~tits$wei)
+plot(tits$wei, tits$egg)
+abline(reg.all)
+
+#Calculate regression lines for each subset and add to plot
+reg.TX <- lm(TX$egg~TX$wei)
+reg.BM <- lm(BM$egg~BM$wei)
+plot(TX$wei, TX$egg, xlab = "Weight", ylab = "Egg number", xlim = c(8, 20), ylim = c(4, 13), col="black")
+points(BM$we, BM$egg, col = "blue")
+abline(reg.all, col = "red")
+abline(reg.TX, col = "black")
+abline(reg.BM, col = "blue")
+
+#Read in the xydata file
+xydata <- read.csv("D:Google Drive/Lund/Statistics course/Lectures and exercises/Exercise 1/xydata.csv", header = TRUE, sep = ";", row.names = NULL)
+xydata 
+
+#Plot data
+plot(xydata$x, xydata$y)
+
+#Calculate ln(x) and add to dataframe
+xydata$ln.x <- log(xydata$x)
+xydata
+
+#Plot y versys ln(x)
+plot(xydata$ln.x, xydata$y)
