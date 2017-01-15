@@ -1,0 +1,158 @@
+---
+title: "Stats Exam 2016: Question 4"
+author: "Sergii Gladchuk"
+date: "December 27, 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background
+
+*It is well known that lemmings are suicidal. According to locals, they jump off cliffs into deep water when they are too stressed. Together with his colleague prof W. Disney, prof. Plupp designed an experiment to test this “common knowledge”. They randomly collected 20 lemmings from the field. In the lab, they took blood samples from each lemming to measure its stress level (variable stress). They also determined the sex of all individuals (sex = 0 means female, sex = 1 means male). Next, each lemming was put on a high platform (12m) above a barrel of water. It was noted whether it jumped (jump=1) or not (jump=0). You find the data in the file “lemmingjump” (.sav and .csv).*
+
+Since dependent variable *jump* is binary, Logistic regression analyses should be applied to answer questions about tendency to jump based on all independent variables.
+
+Reading and checking of the data.
+```{r initial}
+jump.data <- read.csv('~/Documents/courses/stats/Exam/lemmingjump.csv', sep=';')
+str(jump.data)
+```
+There is no need to convert integer 1/0 variable *sex* to factor yet, because first sub-question is analysis of frequencies.
+
+## Sub-question a)
+
+*Ignoring the stress level, is there a difference between the sexes in the tendency to jump?*
+
+To test hypothesis that *jump* is dependent on *sex*, next steps should be performed:
+
+ 1. Frequency data to be converted into contingency table
+ 2. Calculation of expected counts to define test, which should be used.
+ 3. All or some of $\chi^2$-test, G-test and Fishers' exact tests should be performed.
+
+```{r sub1}
+counts <- table(jump.data$sex,jump.data$jump)
+rownames(counts) <- c('female','male')
+colnames(counts) <- c('no jump', 'jump')
+counts
+
+#expected counts
+hab.exp <- matrix(NA,2,2)
+for (i in 1:length(counts[1,])) {
+  for (j in 1:length(counts[,1])){
+    hab.exp[i,j] <- sum(counts[i,])/sum(counts) * 
+      (sum(counts[,j])/sum(counts)) * sum(counts);
+  }
+}
+hab.exp
+
+chisq.test(counts)
+library(DescTools)
+GTest(counts)
+fisher.test(counts)
+
+```
+
+Expected values are all 5 so all three test are valid to take into account and all three tests have p-value less than 0.05 so null-hypothesis that there is no tendency to jump between sexes should be rejected.
+
+## Sub-question b)
+
+*Illustrate your result in a)*
+
+Bar-plot to visualize proportion.
+
+```{r sub2}
+barplot(counts, xlab='Jump no/yes', ylab='Count of lemmings', 
+        beside=TRUE, legend=rownames(counts), ylim=c(0,12))
+
+
+```
+
+The bar-plot supports the fact that proportion is not the same (fully reversed one actually)  and that male tendency to jump is much higher.
+
+## Sub-question c)
+
+*Taking all data into account, can you find an effect of the stress level on the jumping propensity?*
+
+Now is the time for logistic regression analysis. The family for generalized linear model should be binomial because dependent variable is binomial. Also no interaction between stress and sex should be included into the model.
+
+```{r sub3}
+jump.data$sex <- factor(jump.data$sex)
+str(jump.data)
+
+full.model <- glm(jump~stress+sex, data=jump.data, family = binomial)
+summary(full.model)
+library(glmulti)
+model.sel <- glmulti(full.model, level=2, crit='aic')
+summary(model.sel)
+weightable(model.sel)
+
+best.model <- glm(jump~stress, data=jump.data, family = binomial)
+summary(best.model)
+
+AIC(full.model)
+AIC(best.model)
+```
+
+Even in small full model (with two parameters) non of the parameters was significant - model selection procedure advised to remove least significant parameter (*sex*) in order to get better fit. This is confirmed by slight decrease of AIC value.
+
+## Sub-question d)
+
+*Taking the stress level into account, is there now a difference between the sexes in their tendency to jump?*
+
+Since *sex* factor was excluded from best fitted model the *stress* is only significant effect which plays role in jump decision. That leaves *sex* as other dependent variable on *stress*. This can be confirmed by creating another model.
+```{r sub4}
+sex.model <- glm(sex~stress, data=jump.data, family=binomial)
+summary(sex.model)
+
+```
+
+The p-value for *stress* parameter in this model for sex prediction has almost the same significance as our previous model for jump prediction. In simple words if lemming is very stressful there is high probability that this lemming is male (based on sex prediction model) and that he will jump (based on jump prediction model).
+That is why *sex* variable does not add any value to the jump prediction model.
+
+## Sub-question e)
+
+*Make a suitable illustration of your results in c)*
+
+Graph of 'actual values diferentiated by sex' and 'values predicted by model' so as 'actual model curve'.
+
+```{r sub5, fig.width=8, fig.height=8}
+jump.data$pred <- predict(best.model, jump.data, type='response')
+
+#add some jitter to the points
+jump.data$jump.jit <- jitter (jump.data$jump, amount = 0.02)
+females <- subset(jump.data, jump.data$sex == '0')
+males <- subset(jump.data, jump.data$sex == '1')
+
+coefs <- coef(best.model)
+coefs
+
+x <- seq(0,5, by=0.1)
+y <- coefs[1] + coefs[2]*x
+pred <- exp(y)/(1+exp(y))
+
+plot(females$jump.jit~females$stress, xlab='Stress level', 
+     ylab='Probability of jump', xlim=c(0,5), ylim=c(0,1.1), 
+     col='red', yaxt="n")
+axis(2,at=seq(0,1.1,by=0.1), labels = seq(0,1.1,by=0.1))
+points(males$jump.jit~males$stress, col='blue')
+
+points(females$pred~females$stress, col='red', pch=15)
+points(males$pred~males$stress, col='blue', pch=15)
+
+lines(x,pred)
+abline(0.5,0, lty=2)
+legend(0,0.95,legend = c('Females actuals','Males actuals',
+                        'Female predicted','Male predicted',
+                        'Logistic regresion model',
+                        '50% probability'), 
+       col=c('red','blue','red','blue','black','black'),
+       pch=c(21,21,15,15,NA,NA),
+       lty=c(0,0,0,0,1,2))
+
+```
+Conclusion:
+
+Based on the graph only 4 actual points (2 males which did not jumped and 2 lemmings of each sex which actually jumped) are not predicted correctly out of 20, which is not so bad. Also it is seen that no better logistic regression line can be build taking into account sexes, so decision to exclude *sex* parameter from final model was correct.

@@ -1,0 +1,29 @@
+#Read in the data, making sure to specify the right pathway
+GUD34 <- read.csv("pathway/GUD34.csv", header = TRUE, sep = ";", row.names = NULL)
+#For example, for me the pathways are
+GUD34 <- read.csv("D:Google Drive/Lund/Statistics course/Lectures and exercises/Exercise 2/GUD34.csv", header = TRUE, sep = ";", row.names = NULL)
+GUD56 <- read.csv("D:Google Drive/Lund/Statistics course/Lectures and exercises/Exercise 2/GUD56.csv", header = TRUE, sep = ";", row.names = NULL)
+
+#Combine dataframes
+GUD36 <- rbind(GUD34, GUD56)
+
+#Take means for each pair
+aveGUD <-aggregate(GUD36$gud, by=list(GUD36$pid), mean)
+colnames(aveGUD) <- c("pid", "gud")
+
+#Read in data
+FLEDGE <- read.csv("D:Google Drive/Lund/Statistics course/Lectures and exercises/Exercise 2/FLEDGE.csv", header = TRUE, sep = ";", row.names = NULL)
+
+#Take means for each pair
+aveFLE <-aggregate(FLEDGE$fledge, by=list(FLEDGE$pid), mean)
+colnames(aveFLE) <- c("pid", "fledge")
+
+#Merge dataframes
+FLE.GUD <- merge(aveFLE, aveGUD, by = "pid", all=TRUE)
+
+#Plot fledge vs. GUD
+plot(FLE.GUD$gud, FLE.GUD$fledge)
+
+#Regression of fledge on GUD
+reg <- lm(FLE.GUD$fledge~FLE.GUD$gud)
+summary(reg)

@@ -1,0 +1,146 @@
+---
+title: "Stats Exam 2016: Question 1"
+author: "Sergii Gladchuk"
+date: "December 23, 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background
+
+*Professor L.R. Plupp has his main research area in the north of Sweden, where he studies his favourite animals: lemmings (Lemmus lemmus).Over the years, he has noticed a difference in the colouring of the lemmings. Some individuals are redder than others, which are darker, or black.*
+*Moreover, he had the feeling that he saw black lemmings more often in overgrown habitats, and red lemmings in open habitat. To test this hypothesis he set out traps to collect lemmings. He set some traps in open habitat and some traps in overgrown habitats. He collected in total 80 individuals and checked them all for colour. He also noted the sex of all individuals. You find the results in the file “lemmingcolours” (.sav and .csv).*
+
+This is clear from description that analysis of frequencies should be used in order to test the hypothesis of professor L.R. Plupp.   
+First things first - upload and check the data:
+
+```{r initial}
+lemming <- read.csv('~/Documents/courses/stats/Exam/lemmingcolours.csv', sep=';')
+str(lemming)
+
+```
+All variables are factors and no missing data.
+
+##Sub-question a)
+*If you ignore sex, is there a significant difference in the colour morph distribution between the two habitat types?*
+
+To test hypothesis that color is dependent on habitat type, the frequency data should be converted into contingency table and then $\chi^2$-test, G-test and Fishers' exact test performed.
+
+```{r sub1}
+counts <- table(lemming$habitat,lemming$colour)
+counts
+
+chisq.test(counts)
+library(DescTools)
+GTest(counts)
+fisher.test(counts)
+```
+
+The null hypothesis is that *color* of lemmings is independent of *habitat*. All three tests p-value less than 0.05, so null hypothesis can be rejected. In other words professor was right - there is clear dependence between color and habitat.
+
+```{r sub1_2}
+hab.exp <- matrix(NA,2,2)
+for (i in 1:length(counts[1,])) {
+  for (j in 1:length(counts[,1])){
+    hab.exp[i,j] <- sum(counts[i,])/sum(counts) * 
+      (sum(counts[,j])/sum(counts)) * sum(counts);
+  }
+}
+hab.exp
+```
+In this particular case (since there are no expected counts with less than 5) only G-test can be used here.
+
+##Sub-question b)
+*Make a suitable illustration of your result in a)*
+
+Bar-plot is a nice choice to visualize the result
+```{r sub2}
+barplot(counts, xlab='Color of lemmings', ylab='Nubmer of lemmings', 
+        beside=TRUE, legend=rownames(counts), ylim=c(0,35))
+```
+
+The plot clearly shows that proportion of open and overgrown habitat for different colors are opposite - so there is dependence.
+
+##Sub-question c)
+*Ignoring the habitat, is there a colour difference between the sexes?*
+
+New contingency table is needed for color and sexes
+```{r sub3}
+counts2 <- table(lemming$sex,lemming$colour)
+counts2
+
+chisq.test(counts2)
+library(DescTools)
+GTest(counts2)
+fisher.test(counts2)
+
+barplot(counts2, xlab='Color of lemmings', ylab='Nubmer of lemmings', 
+        beside=TRUE, legend=rownames(counts2))
+
+```
+
+Dependence between *sex* and *color* is even more significant than in previous pair. The p-values are around e-06 for all 3 tests. The bar-plot supports the alternative hypothesis that there is more red females and black males than red males and black females.
+
+```{r sub3_2}
+hab.exp2 <- matrix(NA,2,2)
+for (i in 1:length(counts2[1,])) {
+  for (j in 1:length(counts2[,1])){
+    hab.exp2[i,j] <- sum(counts2[i,])/sum(counts2) * 
+      (sum(counts2[,j])/sum(counts2)) * sum(counts2);
+  }
+}
+hab.exp2
+```
+Same as previously, since there are no expected counts with less than 5 only G-test can be used here.
+
+##Sub-question d)
+*Using all the data, what are your conclusions? Do red lemmings prefer open habitat or can you find other relationships in the data? (Here some sort of model selection procedure would be appropriate)*
+
+Based on pairwise analysis of color dependence on sex and habitat, there might be a good chance of interaction between sex and habitat or some other iterations and dependencies. So analysis of  table using log-linear models would be appropriate.   
+So procedure will be:
+
+ 1. Convert frequency data to three-way table
+ 2. Run model selection routine with *glm* function based on full model. Poisson distribution should be used, since the data is counts.
+ 3. Compere reduced best.model to full model
+
+```{r sub4}
+lemming$n <- 1
+three.way.table <- aggregate(lemming$n,
+                             by=list(lemming$habitat,lemming$sex,lemming$colour), sum)
+colnames(three.way.table) <- colnames(lemming)
+three.way.table
+library(glmulti)
+full.model <- glm(n~habitat*sex*colour, data=three.way.table, family = poisson)
+summary(full.model)
+
+model.sel <- glmulti(full.model, level=2, crit = 'aic')
+summary(model.sel)
+weightable(model.sel)
+best.model <- glm(n ~ habitat + sex + colour + sex:habitat 
+                  + colour:habitat + colour:sex, 
+                  data=three.way.table, family = poisson)
+summary(best.model)
+anova(best.model, test='Chisq')
+
+second.best.model <- glm(n  ~ habitat + sex + colour + sex:habitat + colour:sex, 
+                         data=three.way.table, family = poisson)
+summary(second.best.model)
+anova(second.best.model, test='Chisq')
+
+third.best.model <- glm(n ~ habitat + sex + sex:habitat, 
+                        data=three.way.table,family = poisson)
+summary(third.best.model)
+anova(third.best.model, test='Chisq')
+
+AIC(full.model)
+AIC(best.model)
+AIC(second.best.model)
+AIC(third.best.model)
+```
+
+So final best model is **second.best.model**! It includes all factors and two two-way interactions sex:habitat and sex:colour. It has lowest AIC value 41.89107.   
+The two interactions mean that both *habitat* and *color* depends on *sex*.
+This model is simpler than full model it lacks one two-way interaction *colour:habitat*, and three-way interaction between all the factors. The exclusion of *colour:habitat* interaction, which is significant in anova output for best model (0.001893) but not so as other interactions, can be explained that *color* is determined by *sex*, and *habitat* is determined by *sex*. So conclusion is that males are more frequently black than red and prefer to live in overgrown habitat. As a result professor observes more black lemmings in overgrown habitat.

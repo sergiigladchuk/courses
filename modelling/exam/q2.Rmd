@@ -1,0 +1,181 @@
+---
+title: "Modelling Biological Systems Exam 2016"
+author: "Sergii Gladchuk"
+date: "December 29, 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 2. Optimal fishing of an unstructured population.
+
+Consider a fish population that grows according to
+
+$$\frac{dn}{dt}=rn\left(1-\left(\frac{n}{K}\right)^2\right),$$
+
+where $r$ and $K$ are positive constants.
+
+## a) What is the (non-trivial) equilibrium population size?
+
+Solve $f(n^*) = 0$
+
+Trivial is $n = 0$
+
+Non-trivial:
+$$1 - \left(\frac{n}{K}\right)^2 = 0$$
+$$n = K$$
+
+since K is positive constant
+
+## b) Show that it is a stable equilibrium.
+
+An equilibrium is stable if $f'(n^*) < 0$
+
+$$f'(n) = f'(rn)  \left(1 -\left(\frac{n}{K}\right)^2\right) + rn  f'\left(1 -\left(\frac{n}{K}\right)^2\right) = r - \frac{rn^2}{K^2} - \frac{2rn^2}{K^2} = r - \frac{3rn^2}{K^2}$$
+
+$$f'(n^*) = r - 3r = -2r < 0$$
+since r is positive constant.
+
+The same shows Growth Function graph based on our model - the slope is negative at $n = K$ point:
+
+```{r}
+library(deSolve)
+
+#define the drowth function
+
+populationGrowth <- function(t, n, P) {
+  dndt <- P$r0 * n * (1 - n**2/P$K**2)
+  list(dndt)
+  
+}
+
+# set the vector of time-points for the output
+timevec <- seq(0, 20, by=0.1)
+
+# list of parameters
+
+P <- list(r0 = 1.3, K = 100)
+
+n0 <- 2 #initial population size
+
+# call the ode function
+n <- 1:110
+out <- ode(y = n0, func = populationGrowth, times = timevec, parms = P)
+dndt <- unlist(populationGrowth(1, n, P))
+par(mfrow = c(1,2))
+plot(out[,1], out[,2], type='l', main = 'Population growth', 
+     xlab='Time', ylab='Population size')
+plot(n, dndt, type='l', main='Growth Function', xlab='n', ylab='dn/dt',col='red')
+abline(0,0)
+
+```
+\pagebreak
+
+Now assume the population is harvested, such that a proportion h is harvested per
+time unit.
+
+## c) Add the harvesting to the population dynamic model!
+
+$-hn$ should be added to starting model
+
+$$\frac{dn}{dt}=rn\left(1-\left(\frac{n}{K}\right)^2\right) - hn$$
+
+## d) Where is the new equilibrium population size?
+
+Solve $f(n^*) = 0$
+
+$$n\left(r\left(1 - \left(\frac{n}{K}\right)^2\right) - h\right) = 0$$
+
+Trivial is $n = 0$
+
+Non-trivial:
+$$r\left(1 - \left(\frac{n}{K}\right)^2\right) - h = 0$$
+
+$$r - \frac{rn^2}{K^2} - h = 0$$
+
+$$\frac{r}{K^2}  n^2 = r - h$$
+
+$$n^2 = K^2  \left(1 - \frac{h}{r}\right)$$
+
+$$n = K \sqrt{1 - \frac{h}{r}}$$
+
+Confirmation by running in R
+
+```{r}
+library(deSolve)
+#define the drowth function with fishing
+populationGrowth <- function(t, n, P) {
+  dndt <- P$r0 * n * (1 - n**2/P$K**2) - n*P$h
+  list(dndt)
+}
+# set the vector of time-points for the output
+timevec <- seq(0, 20, by=0.1)
+# list of parameters
+P <- list(r0 = 1.5, K = 100, h = 0.5)
+n0 <- 50 #initial population size
+# call the ode function
+out <- ode(y = n0, func = populationGrowth, times = timevec, parms = P)
+n <- 1:110
+dndt <- unlist(populationGrowth(1, n, P))
+par(mfrow = c(1,2))
+plot(out[,1], out[,2], type='l', main = 'Population growth', xlab='Time', ylab='Population size')
+plot(n, dndt, type='l', main='Growth Function', xlab='n', ylab='dn/dt',col='red')
+abline(0,0)
+
+```
+
+There is stable equilibrium point (lower than K) with negative slope.
+
+## e) At what harvest rate does the population go extinct?
+
+If $h > r \Rightarrow n < 0$
+
+This is confirmed by running same model with $h > r$
+
+```{r}
+library(deSolve)
+#define the drowth function with fishing
+populationGrowth <- function(t, n, P) {
+  dndt <- P$r0 * n * (1 - n**2/P$K**2) - n*P$h
+  list(dndt)
+}
+# set the vector of time-points for the output
+timevec <- seq(0, 20, by=0.1)
+# list of parameters
+P <- list(r0 = 1.5, K = 100, h = 1.7)
+n0 <- 50 #initial population size
+# call the ode function
+out <- ode(y = n0, func = populationGrowth, times = timevec, parms = P)
+n <- 1:110
+dndt <- unlist(populationGrowth(1, n, P))
+par(mfrow = c(1,2))
+plot(out[,1], out[,2], type='l', main = 'Population growth', xlab='Time', ylab='Population size')
+plot(n, dndt, type='l', main='Growth Function', xlab='n', ylab='dn/dt',col='red')
+abline(0,0)
+
+```
+
+There is no second stable equilibrium point on Growth Function graph
+
+\pagebreak
+
+## f) At what harvest rate is the yield, i.e. the total number of harvested individuals, maximized?
+
+Yield ($hn$) at equilibrium:
+
+$$hK\sqrt{1 - \frac{h}{r}}$$
+
+Maximized yield can be found at 0 point for derivative of above function $f'(h^*) = 0$
+
+$$f'(h) = f'(Kh) \sqrt{1 - \frac{h}{r}} + kh f'\left(\sqrt{1 - \frac{h}{r}}\right) = K \sqrt{1 - \frac{h}{r}} + Kh\frac{1}{2}\left(1 - \frac{h}{r}\right)^{-\frac{1}{2}} \left(-\frac{1}{r}\right) = $$
+
+$$= K\sqrt{1 - \frac{h}{r}} - \frac{Kh}{2r\sqrt{1 - \frac{h}{r}}} = \frac{2rK\left(1-\frac{h}{r}\right) - Kh}{2r\sqrt{1 - \frac{h}{r}}} = K \frac{2r - 3h}{2r\sqrt{1 - \frac{h}{r}}}$$
+
+So for $f'(h^*) = 0$ either $K = 0$ or
+
+$$\frac{2r - 3h}{2r\sqrt{1 - \frac{h}{r}}} = 0$$
+$$2r - 3h = 0$$
+$$h = \frac{2}{3}r$$
+

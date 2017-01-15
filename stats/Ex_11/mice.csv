@@ -1,0 +1,13 @@
+treat;age;mort;n
+Bacteria only;Immature;Dead;26
+Bacteria only;Immature;Alive;29
+Bacteria only;Mature;Dead;43
+Bacteria only;Mature;Alive;41
+Bacteria only;Old;Dead;15
+Bacteria only;Old;Alive;23
+Bacteria and antiserum;Immature;Dead;21
+Bacteria and antiserum;Immature;Alive;34
+Bacteria and antiserum;Mature;Dead;21
+Bacteria and antiserum;Mature;Alive;58
+Bacteria and antiserum;Old;Dead;8
+Bacteria and antiserum;Old;Alive;37

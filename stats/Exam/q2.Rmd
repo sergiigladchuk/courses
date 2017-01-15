@@ -1,0 +1,131 @@
+---
+title: "Stats Exam 2016: Question 2"
+author: "Sergii Gladchuk"
+date: "December 25, 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background
+
+*The good professor had developed several different kinds of traps to catch lemmings. Now he wanted to know which design was the best one. To investigate this, he puts out five traps of each kind. Every day for a whole summer, he sent out his students to empty them all and also put them in new, random, locations (to avoid catching the same lemmings all over again). At the end of the summer each trap had caught a number of lemmings, according to the data in file “lemmingtraps” (.sav and .csv). The first variable is just trap id. The variable type is the type of trap, numbered 1 through 4. Finally, catch gives the total number of caught lemmings in each trap.*
+*Note: Even though the catch data are counts, and therefore discrete, you can regard them as continuous here.*
+
+Analyses of variances ANOVA should be conducted to answer questions based on the experiment setup. In this particular case One-way ANOVA, which analyses the differences of variances between groups (for different types of traps) and within groups (for same type of trap) should be sufficient. Also this is Model I ANOVA, because factor is fixed, not randomly chosen from many other levels (types of traps).
+
+```{r initial}
+traps <- read.csv('~/Documents/courses/stats/Exam/lemmingtraps.csv', sep=';')
+str(traps)
+
+```
+Data is fine - trap type is a factor, no missing data. The analyses can be started.
+
+## Sub-question a)
+
+*Is there a difference between the trap designs, in terms of catching lemmings?*
+
+One-way ANOVA, model I test
+
+```{r sub1}
+aov.traps <- aov(traps$catch~traps$type)
+summary(aov.traps)
+
+```
+The difference between types of traps is significant: p-value - 0.0041
+
+## Sub-question b)
+
+*Make a suitable illustration of your result in a)*
+
+Required illustrations of results:
+
+* box-plot of data
+* error plot
+* confidence intervals plot
+
+```{r sub2}
+boxplot(traps$catch~traps$type, ylab='Number of catches', xlab='Traps')
+
+library(Rmisc)
+mean.ci.se <- summarySE(traps, 'catch', 'type', na.rm = TRUE)
+mean.ci.se
+
+library(Hmisc)
+x <- c(1:4)
+plot(x,mean.ci.se[,3], type='p', xlim=c(0.5,4.5),
+     xlab='Traps', ylim=c(20,50), main='Error plot', 
+     ylab='Number of catches', axes = FALSE)
+axis(1, at=c(0.5,1,2,3,4,4.5), labels=c('','type1','type2','type3','type4',''))
+axis(2, at=seq(20,50,5))
+errbar(x, mean.ci.se[,3], mean.ci.se[,3] + mean.ci.se[,5], 
+       mean.ci.se[,3] - mean.ci.se[,5], add=TRUE, 
+       errbar.col='red')
+
+plot(x,mean.ci.se[,3], type='p', xlim=c(0.5,4.5),
+     xlab='Traps', ylim=c(20,50), main='Confidence interval plot', 
+     ylab='Number of catches', axes = FALSE)
+axis(1, at=c(0.5,1,2,3,4,4.5), labels=c('','type1','type2','type3','type4',''))
+axis(2, at=seq(20,50,5))
+errbar(x, mean.ci.se[,3], mean.ci.se[,3] + mean.ci.se[,6], 
+       mean.ci.se[,3] - mean.ci.se[,6], add=TRUE)
+
+```
+
+Based on the graphs built, it is seen that there are differences between trap types. The most helpful ones were error and confident intervals plots, they show that the main contributor to "between group variance" is type1. Type2 and type3 are not really different and are the worst ones. Type4 is slightly better than 2 and 4, though it is not that clear if this is significant (based on confidence interval plot).
+
+## Sub-question c)
+
+*The professor suspected beforehand that trap design number 1 was superior to the rest. Was he correct?*
+
+This hypothesis is supported based on graphs above, but numerical statistical significance of type1 traps over the others also can be calculated.
+
+```{r sub3}
+lm.traps <- lm(traps$catch~traps$type)
+summary(lm.traps)
+```
+The output shows that all other 3 types in comparison to the first type are significantly different, in our case significantly worse than type1 trap. So professor was right - **trap with design 1 is superior to the rest**.
+
+## Sub-question d)
+
+*Test the assumptions of your test in a)*
+
+List of the assumptions to be tested:
+
+* __normality__. Test either normality of residuals or normality within each group. Since size of each group is only 5 entries, it is best to go with test for normality of residuals (histogram of residuals, Shapiro-Wilk normality test, Q-Q Plot).
+* __homogeneity of variances__ - Levene's Test for Homogeneity of Variance
+* __independence__ - test of null-hypothesis that the control group is identical to all other groups. Since it is already obvious that first group is most different from other groups *planned comparison* can be used here (no need for post-hoc) based on contrasts (dummy coding procedure in R for contrasts).
+
+
+```{r sub4}
+traps$resid <- residuals(lm.traps)
+aveH <- hist(traps$resid, breaks=10, main = 'Normality of residuals')
+xfit <- seq(min(traps$resid),max(traps$resid),length=100)
+yfit <- dnorm(xfit,mean=mean(traps$resid),sd=sd(traps$resid))
+yfit <- yfit*diff(aveH$mids[1:2])*length(traps$resid)
+lines(xfit,yfit, col='blue', lwd=2)
+
+shapiro.test(traps$resid)
+
+qqnorm(traps$resid)
+qqline(traps$resid)
+
+library(car)
+leveneTest(traps$catch,traps$type)
+
+contrasts.type1 <- matrix(0, ncol=3,nrow=4)
+contrasts.type1[2:4,1] <- 1
+contrasts.type1
+
+contrasts(traps$type) <- contrasts.type1
+summary.lm(aov(traps$catch~traps$type))
+```
+Conclusions:
+
+* Residuals are normally distributed - the histogram is not that nice, but Shapiro-Wilk normality test is not significant (p-value > 20%) so distribution or residuals is close to normal. Q-Q plot support almost-normal distribution.
+* Variances are homogeneitic, since p-value in Levene's Test is very high - null-hypothesis is not rejected.
+* The independence assumption was also confirmed based on tests with contrast to type1 trap. The p-value is 0.0006243 so null-hypothesis that control group is identical to all other groups should be rejected.
+
+**All ANOVA assumptions were confirmed by the set of tests, so as overall conclusion that trap with design #1 is significantly better than other designs.**

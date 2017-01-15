@@ -1,0 +1,17 @@
+psite;sex;mort;n
+In Medium;female;Healthy;55
+In Medium;female;Poisoned;6
+In Medium;male;Healthy;34
+In Medium;male;Poisoned;17
+At Margin;female;Healthy;23
+At Margin;female;Poisoned;1
+At Margin;male;Healthy;15
+At Margin;male;Poisoned;5
+On Wall;female;Healthy;7
+On Wall;female;Poisoned;4
+On Wall;male;Healthy;3
+On Wall;male;Poisoned;5
+On top of Medium;female;Healthy;8
+On top of Medium;female;Poisoned;3
+On top of Medium;male;Healthy;5
+On top of Medium;male;Poisoned;3
